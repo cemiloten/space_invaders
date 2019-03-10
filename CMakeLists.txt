@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 17)
 project(space_invaders)
 
 # For YouCompleteMe (Vim) autocompletion
-# set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(
     /usr/local/include
@@ -16,8 +16,9 @@ link_directories(${LIBRARIES_DIR})
 
 find_library(LIB_GLFW3    NAMES glfw.3    PATHS ${LIBRARIES_DIR})
 
-file(GLOB SOURCE_FILES "source/*")
+file(GLOB SOURCE_FILES "src/*")
 file(GLOB HEADER_FILES "include/space_invaders/*")
+
 add_executable(space_invaders
     ${SOURCE_FILES}
     ${HEADER_FILES})
