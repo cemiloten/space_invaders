@@ -29,7 +29,6 @@ void validate_shader(GLuint shader, const char* file = 0) {
     char buffer[BUFFER_SIZE];
     GLsizei length = 0;
     glGetShaderInfoLog(shader, BUFFER_SIZE, &length, buffer);
-
     if (length < 0)
         return;
     printf("Shader %d(%s) compile error: %s\n", shader, (file ? file : ""), buffer);
@@ -82,7 +81,20 @@ int main() {
     buffer.width = w;
     buffer.height = h;
     buffer.data = new uint32_t[w * h];
+
     buffer_clear(&buffer, clear_color);
+
+    GLuint buffer_texture;
+    glGenTextures(1, &buffer_texture);
+    glBindTexture(GL_TEXTURE_2D, buffer_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, buffer.width, buffer.height, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buffer.data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    GLuint fullscreen_triangle_vao;
+    glGenVertexArrays(1, &fullscreen_triangle_vao);
 
     const char* vertex_shader =
         "\n"
@@ -111,21 +123,15 @@ int main() {
         "   outColor = texture(buffer, TexCoord).rgb;\n"
         "}\n";
 
-    GLuint fullscreen_triangle_vao;
-    glGenVertexArrays(1, &fullscreen_triangle_vao);
-    glBindVertexArray(fullscreen_triangle_vao);
-
     GLuint shader_id{ glCreateProgram() };
 
     // Create vertex shader
     {
         GLuint shader_vp = glCreateShader(GL_VERTEX_SHADER);
-
         glShaderSource(shader_vp, 1, &vertex_shader, 0);
         glCompileShader(shader_vp);
         validate_shader(shader_vp, vertex_shader);
         glAttachShader(shader_id, shader_vp);
-
         glDeleteShader(shader_vp);
     }
 
@@ -137,7 +143,6 @@ int main() {
         glCompileShader(shader_fp);
         validate_shader(shader_fp, fragment_shader);
         glAttachShader(shader_id, shader_fp);
-
         glDeleteShader(shader_fp);
     }
 
@@ -151,21 +156,20 @@ int main() {
         return -1;
     }
 
-    GLuint buffer_texture;
-    glGenTextures(1, &buffer_texture);
-    glBindTexture(GL_TEXTURE_2D, buffer_texture);
-    glTexImage2D(
-        GL_TEXTURE_2D, 0, GL_RGB8,
-        buffer.width, buffer.height, 0,
-        GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buffer.data);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glUseProgram(shader_id);
 
-    glClearColor(1.0, 0.0, 0.0, 1.0);
+    GLint location = glGetUniformLocation(shader_id, "buffer");
+    glUniform1i(location, 0);
+
+    glDisable(GL_DEPTH_TEST);
+    glActiveTexture(GL_TEXTURE0);
+
+    glBindVertexArray(fullscreen_triangle_vao);
+
+    uint32_t clear_color{ rgb_to_uint32(0, 128, 0) };
     while (!glfwWindowShouldClose(window)) {
-        glClear(GL_COLOR_BUFFER_BIT);
+        buffer_clear(&buffer, clear_color);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
